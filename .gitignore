@@ -1,0 +1,22 @@
+# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Environment variables
+.env
+
+# Raw dataset
+data/raw/
+
+# Generated/intermediate data
+data/interim/
+
+# Logs and temporary files
+*.log
+*.tmp
+
+# OS files
+.DS_Store
