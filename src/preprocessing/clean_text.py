@@ -6,34 +6,36 @@ import re
 INPUT_FOLDER = "data/interim/extracted"
 OUTPUT_FOLDER = "data/interim/cleaned"
 
+
+# Create output folder if it doesn't exist
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 
 def clean_text(text):
 
-    # Remove excessive spaces
+    # Only remove obvious extraction whitespace.
+    # Do NOT modify numbers, units, chemical names, or terminology.
+
+    # Replace multiple spaces/tabs with a single space
     text = re.sub(r"[ \t]+", " ", text)
 
-    # Remove spaces before punctuation
-    text = re.sub(r"\s+([,.!?;:])", r"\1", text)
+    # Remove excessive blank lines
+    text = re.sub(r"\n{3,}", "\n\n", text)
 
-    # Fix spaces around slash
-    text = re.sub(r"\s*/\s*", "/", text)
-
-    # Remove excessive newlines
-    text = re.sub(r"\n+", "\n", text)
-
-    # Remove spaces at beginning/end
+    # Remove leading/trailing whitespace
     text = text.strip()
 
     return text
 
 
+# Get all JSON files from extracted folder
 json_files = os.listdir(INPUT_FOLDER)
 
 
+# Process every JSON file
 for filename in json_files:
 
+    # Process only JSON files
     if not filename.lower().endswith(".json"):
         continue
 
@@ -41,28 +43,35 @@ for filename in json_files:
 
     print(f"Cleaning: {filename}")
 
+    # Read extracted JSON
     with open(input_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     cleaned_pages = []
 
+    # Process every page
     for page in data["pages"]:
 
-        text = clean_text(page["text"])
+        original_text = page["text"]
 
-        if len(text) < 30:
-            continue
+        # Apply conservative cleaning
+        cleaned_text = clean_text(original_text)
 
-        cleaned_pages.append({
-            "page": page["page"],
-            "text": text
-        })
+        # Keep pages containing meaningful text
+        if len(cleaned_text.strip()) > 0:
 
+            cleaned_pages.append({
+                "page": page["page"],
+                "text": cleaned_text
+            })
+
+    # Create final cleaned JSON
     output = {
         "source": data["source"],
         "pages": cleaned_pages
     }
 
+    # Save cleaned JSON
     output_path = os.path.join(
         OUTPUT_FOLDER,
         filename
@@ -76,7 +85,7 @@ for filename in json_files:
             indent=2
         )
 
-    print(f"Saved: {filename}")
+    print(f"✓ Saved: {filename}")
 
 
 print("\nCleaning completed!")
