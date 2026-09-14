@@ -2,29 +2,24 @@ import os
 import json
 import re
 
-
-INPUT_FOLDER = "data/interim/conservative"
-OUTPUT_FOLDER = "data/interim/cleaned"
-
+INPUT_FOLDER = "data/interim/extracted"
+OUTPUT_FOLDER = "data/interim/conservative"
 
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 
 def clean_text(text):
 
-    # Remove excessive spaces
-    text = re.sub(r'[ \t]+', ' ', text)
+    # Only remove obvious extraction whitespace.
+    # Do NOT modify numbers, units, chemical names, or terminology.
 
-    # Remove spaces before punctuation
-    text = re.sub(r'\s+([,.!?;:])', r'\1', text)
+    # Replace multiple spaces/tabs with a single space
+    text = re.sub(r"[ \t]+", " ", text)
 
-    # Fix spaces around slash
-    text = re.sub(r'\s*/\s*', '/', text)
+    # Remove excessive blank lines
+    text = re.sub(r"\n{3,}", "\n\n", text)
 
-    # Remove excessive newlines
-    text = re.sub(r'\n+', '\n', text)
-
-    # Remove spaces at beginning/end
+    # Remove leading/trailing whitespace
     text = text.strip()
 
     return text
@@ -46,16 +41,17 @@ for filename in os.listdir(INPUT_FOLDER):
 
     for page in data["pages"]:
 
-        text = clean_text(page["text"])
+        original_text = page["text"]
 
-        # Skip pages with no meaningful text
-        if len(text) < 30:
-            continue
+        cleaned_text = clean_text(original_text)
 
-        cleaned_pages.append({
-            "page": page["page"],
-            "text": text
-        })
+        # Keep pages containing text
+        if len(cleaned_text.strip()) > 0:
+
+            cleaned_pages.append({
+                "page": page["page"],
+                "text": cleaned_text
+            })
 
     output = {
         "source": data["source"],
@@ -68,6 +64,7 @@ for filename in os.listdir(INPUT_FOLDER):
     )
 
     with open(output_path, "w", encoding="utf-8") as f:
+
         json.dump(
             output,
             f,
@@ -75,7 +72,7 @@ for filename in os.listdir(INPUT_FOLDER):
             indent=2
         )
 
-    print(f"Saved: {filename}")
+    print(f"✓ Saved: {filename}")
 
 
-print("\nCleaning completed!")
+print("\nConservative cleaning completed!")
