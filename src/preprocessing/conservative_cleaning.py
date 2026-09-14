@@ -3,7 +3,7 @@ import json
 import re
 
 INPUT_FOLDER = "data/interim/extracted"
-OUTPUT_FOLDER = "data/interim/cleaned"
+OUTPUT_FOLDER = "data/interim/conservative"
 
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
