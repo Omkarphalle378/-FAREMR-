@@ -7,6 +7,7 @@ INPUT_FOLDER = "data/interim/conservative"
 OUTPUT_FOLDER = "data/interim/cleaned"
 
 
+# Create output folder if it doesn't exist
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 
@@ -32,6 +33,7 @@ def clean_text(text):
 
 for filename in os.listdir(INPUT_FOLDER):
 
+    # Process only JSON files
     if not filename.lower().endswith(".json"):
         continue
 
@@ -39,6 +41,7 @@ for filename in os.listdir(INPUT_FOLDER):
 
     print(f"Cleaning: {filename}")
 
+    # Read input JSON
     with open(input_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -75,7 +78,7 @@ for filename in os.listdir(INPUT_FOLDER):
             indent=2
         )
 
-    print(f"Saved: {filename}")
+    print(f"✓ Saved: {filename}")
 
 
 print("\nCleaning completed!")
