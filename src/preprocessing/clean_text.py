@@ -1,84 +1,80 @@
-import os
+"""Standard text cleaning pipeline for agricultural document pages."""
+
 import json
+from pathlib import Path
 import re
 
+# Project root path resolution
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-INPUT_FOLDER = "data/interim/conservative"
-OUTPUT_FOLDER = "data/interim/cleaned"
-
-
-# Create output folder if it doesn't exist
-os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+INPUT_FOLDER = PROJECT_ROOT / "data" / "interim" / "conservative"
+OUTPUT_FOLDER = PROJECT_ROOT / "data" / "interim" / "cleaned"
 
 
-def clean_text(text):
-
+def clean_text(text: str) -> str:
+    """Normalize whitespace, punctuation spacing, and line breaks."""
     # Remove excessive spaces
-    text = re.sub(r'[ \t]+', ' ', text)
-
+    text = re.sub(r"[ \t]+", " ", text)
     # Remove spaces before punctuation
-    text = re.sub(r'\s+([,.!?;:])', r'\1', text)
-
+    text = re.sub(r"\s+([,.!?;:])", r"\1", text)
     # Fix spaces around slash
-    text = re.sub(r'\s*/\s*', '/', text)
-
+    text = re.sub(r"\s*/\s*", "/", text)
     # Remove excessive newlines
-    text = re.sub(r'\n+', '\n', text)
-
+    text = re.sub(r"\n+", "\n", text)
     # Remove spaces at beginning/end
-    text = text.strip()
-
-    return text
+    return text.strip()
 
 
-for filename in os.listdir(INPUT_FOLDER):
+def run_clean_text(input_dir: Path = INPUT_FOLDER, output_dir: Path = OUTPUT_FOLDER) -> None:
+    """Process all conservative JSON files and output cleaned text pages."""
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Process only JSON files
-    if not filename.lower().endswith(".json"):
-        continue
+    if not input_dir.exists():
+        print(f"Directory not found: {input_dir}")
+        return
 
-    input_path = os.path.join(INPUT_FOLDER, filename)
+    json_files = sorted([f for f in input_dir.iterdir() if f.suffix.lower() == ".json"])
+    if not json_files:
+        print(f"No JSON files found in {input_dir}")
+        return
 
-    print(f"Cleaning: {filename}")
+    for json_file in json_files:
+        filename = json_file.name
+        print(f"Cleaning: {filename}")
 
-    # Read input JSON
-    with open(input_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+        with open(json_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
 
-    cleaned_pages = []
+        cleaned_pages = []
+        for page in data.get("pages", []):
+            text = clean_text(page.get("text", ""))
 
-    for page in data["pages"]:
+            # Skip pages with no meaningful text
+            if len(text) < 30:
+                continue
 
-        text = clean_text(page["text"])
+            cleaned_pages.append({
+                "page": page.get("page"),
+                "text": text
+            })
 
-        # Skip pages with no meaningful text
-        if len(text) < 30:
-            continue
+        output = {
+            "source": data.get("source", filename),
+            "pages": cleaned_pages
+        }
 
-        cleaned_pages.append({
-            "page": page["page"],
-            "text": text
-        })
+        output_path = output_dir / filename
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(output, f, ensure_ascii=False, indent=2)
 
-    output = {
-        "source": data["source"],
-        "pages": cleaned_pages
-    }
+        print(f"✓ Saved: {filename} ({len(cleaned_pages)} pages)")
 
-    output_path = os.path.join(
-        OUTPUT_FOLDER,
-        filename
-    )
-
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(
-            output,
-            f,
-            ensure_ascii=False,
-            indent=2
-        )
-
-    print(f"✓ Saved: {filename}")
+    print("\nCleaning completed!")
 
 
-print("\nCleaning completed!")
+def main():
+    run_clean_text()
+
+
+if __name__ == "__main__":
+    main()
