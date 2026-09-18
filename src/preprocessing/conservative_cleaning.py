@@ -1,78 +1,79 @@
-import os
+"""Conservative text cleaning for extracted PDF pages.
+
+Removes extraction whitespace artifacts while strictly preserving numbers, units,
+chemical formulations, and Marathi/English agricultural terminology.
+"""
+
 import json
+from pathlib import Path
 import re
 
-INPUT_FOLDER = "data/interim/extracted"
-OUTPUT_FOLDER = "data/interim/cleaned"
+# Project root path resolution
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+INPUT_FOLDER = PROJECT_ROOT / "data" / "interim" / "extracted"
+OUTPUT_FOLDER = PROJECT_ROOT / "data" / "interim" / "conservative"
 
 
-def clean_text(text):
-
-    # Only remove obvious extraction whitespace.
-    # Do NOT modify numbers, units, chemical names, or terminology.
-
+def clean_text(text: str) -> str:
+    """Only remove obvious extraction whitespace without altering terminology."""
     # Replace multiple spaces/tabs with a single space
     text = re.sub(r"[ \t]+", " ", text)
-
     # Remove excessive blank lines
     text = re.sub(r"\n{3,}", "\n\n", text)
-
     # Remove leading/trailing whitespace
-    text = text.strip()
-
-    return text
+    return text.strip()
 
 
-for filename in os.listdir(INPUT_FOLDER):
+def run_conservative_cleaning(input_dir: Path = INPUT_FOLDER, output_dir: Path = OUTPUT_FOLDER) -> None:
+    """Process all extracted JSON files with conservative cleaning rules."""
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    if not filename.lower().endswith(".json"):
-        continue
+    if not input_dir.exists():
+        print(f"Directory not found: {input_dir}")
+        return
 
-    input_path = os.path.join(INPUT_FOLDER, filename)
+    json_files = sorted([f for f in input_dir.iterdir() if f.suffix.lower() == ".json"])
+    if not json_files:
+        print(f"No JSON files found in {input_dir}")
+        return
 
-    print(f"Cleaning: {filename}")
+    for json_file in json_files:
+        filename = json_file.name
+        print(f"Cleaning: {filename}")
 
-    with open(input_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+        with open(json_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
 
-    cleaned_pages = []
+        cleaned_pages = []
+        for page in data.get("pages", []):
+            original_text = page.get("text", "")
+            cleaned_text = clean_text(original_text)
 
-    for page in data["pages"]:
+            # Keep pages containing text
+            if len(cleaned_text.strip()) > 0:
+                cleaned_pages.append({
+                    "page": page.get("page"),
+                    "text": cleaned_text
+                })
 
-        original_text = page["text"]
+        output = {
+            "source": data.get("source", filename),
+            "pages": cleaned_pages
+        }
 
-        cleaned_text = clean_text(original_text)
+        output_path = output_dir / filename
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(output, f, ensure_ascii=False, indent=2)
 
-        # Keep pages containing text
-        if len(cleaned_text.strip()) > 0:
+        print(f"✓ Saved: {filename} ({len(cleaned_pages)} pages)")
 
-            cleaned_pages.append({
-                "page": page["page"],
-                "text": cleaned_text
-            })
-
-    output = {
-        "source": data["source"],
-        "pages": cleaned_pages
-    }
-
-    output_path = os.path.join(
-        OUTPUT_FOLDER,
-        filename
-    )
-
-    with open(output_path, "w", encoding="utf-8") as f:
-
-        json.dump(
-            output,
-            f,
-            ensure_ascii=False,
-            indent=2
-        )
-
-    print(f"✓ Saved: {filename}")
+    print("\nConservative cleaning completed!")
 
 
-print("\nConservative cleaning completed!")
+def main():
+    run_conservative_cleaning()
+
+
+if __name__ == "__main__":
+    main()
